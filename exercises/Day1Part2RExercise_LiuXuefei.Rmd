@@ -1,0 +1,176 @@
+---
+title: "Rmd Exercise Template"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Exercises Day 2
+Richard Paquin Morel, adapted from exercises by Christina Maimone
+2019-09-16
+
+##Load the data
+Load the gapminder dataset.
+
+```{r}
+gapminder <- read.csv(here::here("data", "gapminder5.csv"))
+gapminder$country <- as.character(gapminder$country)
+gapminder$continent <- as.character(gapminder$continent)
+```
+
+
+##If Statement
+Use an if() statement to print a suitable message reporting whether there are any records from 2002 in the gapminder dataset. 
+
+Hint: use the any function.
+
+```{r}
+year <- 2002
+if (any(gapminder$year == year) ) {
+    print(paste("Yes, there are records from", year))
+} else {
+    print(paste("No records from", year))
+}
+```
+
+Now do the same for 2012.
+
+```{r}
+year <- 2012
+if (any(gapminder$year == year) ) {
+    print(paste("Yes, there are records from", year))
+} else {
+    print(paste("No records from", year))
+}
+```
+
+
+##Loop and If Statements
+Write a script that finds the mean life expectancy by country for countries whose population is below the mean for the dataset
+
+```{r}
+pop_mean <- mean(gapminder$pop)
+country <- unique(gapminder$country)
+for (i in country) {
+    
+    if (mean(gapminder$pop[gapminder$country == i]) < pop_mean) {
+        mean_le <- mean(gapminder$lifeExp[gapminder$country == i])
+        print(paste("The mean life expectancy in", i, "is", mean_le))
+    } 
+}
+```
+
+
+Write a script that loops through the gapminder data by continent and prints out whether the mean life expectancy is smaller than 50, between 50 and 70, or greater than 70.
+
+```{r}
+conts <- unique(gapminder$continent)
+for (i in conts) {
+    
+    mean_le_cont <- mean(gapminder$lifeExp[gapminder$continent == i])
+
+    if (mean_le_cont < 50) {
+        print(paste("Mean life expectancy of", i, " is less than 50."))
+    } else if (mean_le_cont >= 50 & mean_le_cont <= 70) {
+        print(paste("Mean life expectancy of", i, " is between 50 and 70."))
+    } else {
+        print(paste("Mean life expectancy of", i, " is greater than 70."))
+    }
+}
+```
+
+
+##Exercise: Write Functions
+Create a function that given a data frame will print the name of each column and the class of data it contains. Use the gapminder dataset. Hint: Use mode() or class() to get the class of the data in each column. Remember that names() or colnames() returns the name of the columns in a dataset.
+
+```{r}
+getInfo <- function (df) {
+    name <- names(df)
+    for (i in name) {
+        print(paste(i, mode(df[1,i])))
+    }
+        
+    
+}
+getInfo(gapminder)
+```
+
+
+Create a function that given a vector will print the mean and the standard deviation of a vector, it will optionally also print the median. Hint: include an argument that takes a boolean (TRUE/FALSE) operator and then include an if statement.
+
+```{r}
+vecStats <- function (vect, include_median = FALSE) {
+    vec_mean <- mean(vect)
+    print(paste("The mean is", vec_mean))
+    vec_sd <- sd(vect)
+    print(paste("The sd is", vec_sd))
+    if (include_median == TRUE) {
+        vec_median <- median(vect)
+        print(paste("The median is", vec_median))
+    }
+    
+}
+
+le <- gapminder$lifeExp
+vecStats(le, include_median = F)
+vecStats(le, include_median = T)
+```
+
+
+##Analyzing the relationship
+Use what you???ve learned so far to answer the following questions using the gapminder dataset. Be sure to include some visualizations!
+
+What is the relationship between GDP per capita and life expectancy? Does this relationship change over time? (Hint: Use the natural log of both variables.)
+
+```{r}
+viz_lm <-
+  function(df, dv, iv, year) {
+    dat <- df[df[["year"]] == year, ]
+    y <- log(dat[[dv]])
+    x <- log(dat[[iv]])
+    fit <- lm(y ~ x)
+    plot(y ~ x, main = year,
+         xlab = iv, ylab = dv)
+    lines(x, predict(fit), col = 'blue')
+  }
+for (i in years) {
+  viz_lm(gapminder, "lifeExp", "gdpPercap", i)
+}
+```
+
+
+
+Does the relationship between GDP per capita and life expectacy vary by continent? Make sure you divide the Americas into North and South America.
+
+```{r}
+viz_lm <-
+  function(df, dv, iv, conts) {
+    dat <- df[df[["continent"]] == conts, ]
+    
+    y <- log(dat[[dv]])
+    x <- log(dat[[iv]])
+    fit <- lm(y ~ x)
+    plot(y ~ x, main = conts,
+         xlab = iv, ylab = dv)
+    lines(x, predict(fit), col = 'blue')
+  }
+
+for (i in country) {
+    gapminder$continent[gapminder$country == "United States"] <- "North America"
+    gapminder$continent[gapminder$country == "Canada"] <- "North America"
+    gapminder$continent[gapminder$country == "Mexico"] <- "North America"
+    
+    
+    
+}
+
+conts <- unique(gapminder$continent)
+
+for (i in conts) {
+  viz_lm(gapminder, "lifeExp", "gdpPercap", i)
+}
+```
+
