@@ -1,0 +1,109 @@
+---
+title: "Rmd Exercise Template"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Load the data
+Read both California energy datasets. Make sure the datetime variable is in an appropriate data type (i.e. not character).
+
+```{r}
+library(data.table)
+
+data_file <- here::here("data", "ca_energy_generation.csv")
+
+# read in two versions of data, one as a data.frame and one as a data.table
+generation <- fread(data_file)
+imports <- fread(here::here("data/ca_energy_imports.csv"))
+generation[,datetime := as_datetime(datetime)]
+imports[,datetime := as_datetime(datetime)]
+#str(generation)
+str(imports)
+head(generation)
+```
+
+
+#Merge and reshape the data
+Merge the two datasets and then melt the resulting dataframe/datatable to make it tidy.
+
+```{r}
+merged_energy <- merge(generation, imports, by="datetime")
+melted_merged_energy <- melt(merged_energy, id.vars = "datetime", variable.name = "source", value.name = "usage")
+
+head(melted_merged_energy)
+#str(melted_merged_energy)
+```
+
+
+#Creating new variables
+Create a series of new variables:
+day, which is the year-month-day, without the hour. The lubridate function as_date will do this.
+log_output, which is the natural log of the output.
+
+```{r}
+melted_merged_energy[, day:= as_date(datetime),]
+melted_merged_energy[, log_output := log(usage),]
+
+head(melted_merged_energy)
+```
+
+Challenge: per_output, which is the percent of daily output represented by each observation. You will need to use group_by and to create a new variable with the total output for the day. (Make sure to use ungroup() after this!)
+
+```{r}
+melted_merged_energy[,per_output := usage/sum(usage, na.rm = TRUE), by = day]
+head(melted_merged_energy)
+
+```
+
+
+Bonus: If you are using dplyr, try to do this all in one pipe!
+
+#Summarizing and analyzing data
+Which source has the greatest mean output by hour? (Hint: Use the dplyr verb arrange(desc(variable)) to order the data frame so that the largest value of variable is first. Don???t use desc and it arranges in ascending order. The data.table function is setorder.) Which has the least?
+
+```{r}
+setorder(melted_merged_energy[, max(sum(usage, na.rm=TRUE)), by = datetime])
+
+
+mean_hrly <- melted_merged_energy[,.(mean_hourly = mean(usage)), by = source]
+mean_hrly[mean_hourly == max(mean_hourly) | mean_hourly == min(mean_hourly)]
+
+# another option
+#setorder(mean_hrly, -mean_hourly)
+#mean_hrly
+```
+
+Which source has the greatest mean output by day? Which has the least? (Do not include zero values.)
+
+```{r}
+mean_day <- melted_merged_energy[usage>0, .(mean_by_day = mean(usage)), by = .(source, day)]
+mean_day[mean_by_day == max(mean_by_day) | mean_by_day == min(mean_by_day)]
+```
+
+
+Which sources has the greatest variance in usage over the course of a dataset? Which has the least? (Do not include zero values.)
+
+```{r}
+great_var <- melted_merged_energy[usage > 0, .(sd2 = var(usage)), by = source]
+great_var[sd2 == max(sd2) | sd2 == min(sd2)]
+```
+
+
+#Analyzing renewable versus non-renewable energy sources
+The dataset regroup.csv has information about which sources are considered renewable by the state of California. Use this dataset, along with yourdata manipulation skills, to explore the use of renewable and non-renewable sources. Annotate what your descisions for the analysis.
+
+Hint: Use your merge skills to merge the CA energy data with the regroup data. Which variable should you join by?
+
+
+
+
+
+
+
+
+
+
